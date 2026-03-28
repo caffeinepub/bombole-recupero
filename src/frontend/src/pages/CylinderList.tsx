@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import {
+  FileDown,
   HardDriveDownload,
   Loader2,
   Package,
@@ -117,6 +118,30 @@ export default function CylinderList({ onSelectCylinder }: Props) {
     } catch {
       toast.error("Errore nell'esportazione");
     }
+  }
+
+  function handleExportReportCsv() {
+    if (cylinders.length === 0) {
+      toast.error("Nessuna bombola da esportare");
+      return;
+    }
+    const rows: string[] = ["Codice Bombola;Tipo Gas;Quantita (kg)"];
+    for (const cyl of cylinders) {
+      const gases = gasMap[cyl.code] ?? [];
+      const tipoGas = gases.length > 0 ? gases.join(" / ") : "Nessun gas";
+      const quantita = cyl.currentGasKg.toFixed(2);
+      rows.push(`${cyl.code};${tipoGas};${quantita}`);
+    }
+    const csv = rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const date = new Date().toISOString().slice(0, 10);
+    a.download = `report-bombole-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Report CSV scaricato");
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -240,8 +265,8 @@ export default function CylinderList({ onSelectCylinder }: Props) {
         </div>
       </header>
 
-      {/* Backup/Restore bar */}
-      <div className="bg-muted/30 border-b border-border px-4 py-2 flex items-center gap-2 justify-end">
+      {/* Backup/Restore + Report bar */}
+      <div className="bg-muted/30 border-b border-border px-4 py-2 flex items-center gap-2 justify-end flex-wrap">
         <input
           ref={fileInputRef}
           type="file"
@@ -249,6 +274,17 @@ export default function CylinderList({ onSelectCylinder }: Props) {
           className="hidden"
           onChange={handleFileChange}
         />
+        <Button
+          data-ocid="report_csv.button"
+          size="sm"
+          variant="outline"
+          className="gap-1.5 text-xs h-8"
+          onClick={handleExportReportCsv}
+          disabled={cylinders.length === 0}
+        >
+          <FileDown className="h-3.5 w-3.5" />
+          Report CSV
+        </Button>
         <Button
           data-ocid="backup.button"
           size="sm"
