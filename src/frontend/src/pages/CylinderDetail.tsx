@@ -506,7 +506,10 @@ export default function CylinderDetail({ code, onBack }: Props) {
 
       {/* Modal Assegna */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent data-ocid="assign.dialog" className="max-w-sm mx-4">
+        <DialogContent
+          data-ocid="assign.dialog"
+          className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle className="font-display">Assegna Bombola</DialogTitle>
           </DialogHeader>
@@ -518,6 +521,12 @@ export default function CylinderDetail({ code, onBack }: Props) {
               value={technicianName}
               onChange={(e) => setTechnicianName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAssign()}
+              onFocus={(e) =>
+                e.currentTarget.scrollIntoView({
+                  block: "center",
+                  behavior: "smooth",
+                })
+              }
               autoFocus
             />
           </div>
@@ -537,7 +546,10 @@ export default function CylinderDetail({ code, onBack }: Props) {
 
       {/* Modal Aggiungi Recupero */}
       <Dialog open={recoveryOpen} onOpenChange={setRecoveryOpen}>
-        <DialogContent data-ocid="recovery.dialog" className="max-w-sm mx-4">
+        <DialogContent
+          data-ocid="recovery.dialog"
+          className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle className="font-display">
               Aggiungi Recupero
@@ -574,6 +586,12 @@ export default function CylinderDetail({ code, onBack }: Props) {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, [id]: e.target.value }))
                   }
+                  onFocus={(e) =>
+                    e.currentTarget.scrollIntoView({
+                      block: "center",
+                      behavior: "smooth",
+                    })
+                  }
                 />
               </div>
             ))}
@@ -586,6 +604,12 @@ export default function CylinderDetail({ code, onBack }: Props) {
                 placeholder="es. 0.5"
                 value={form.kg}
                 onChange={(e) => setForm((p) => ({ ...p, kg: e.target.value }))}
+                onFocus={(e) =>
+                  e.currentTarget.scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                  })
+                }
               />
             </div>
           </div>
