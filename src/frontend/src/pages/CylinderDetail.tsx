@@ -25,17 +25,23 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  LogIn,
+  LogOut,
   PlusCircle,
   Trash2,
+  Warehouse,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
+  useAssignCylinder,
   useExportCsv,
+  useGetAllAssignments,
   useGetCylinder,
   useGetCylinderMovements,
   useRegisterRecovery,
+  useReturnCylinder,
   useTotalDischarge,
 } from "../hooks/useQueries";
 
@@ -59,12 +65,17 @@ export default function CylinderDetail({ code, onBack }: Props) {
   const { data: cylinder, isLoading: loadingCyl } = useGetCylinder(code);
   const { data: movements = [], isLoading: loadingMov } =
     useGetCylinderMovements(code);
+  const { data: assignments = {} } = useGetAllAssignments();
   const registerRecovery = useRegisterRecovery(code);
   const totalDischarge = useTotalDischarge(code);
   const exportCsv = useExportCsv(code);
+  const assignCylinder = useAssignCylinder();
+  const returnCylinder = useReturnCylinder();
 
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [dischargeOpen, setDischargeOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [technicianName, setTechnicianName] = useState("");
   const [reportDownloaded, setReportDownloaded] = useState(false);
   const [form, setForm] = useState({
     location: "",
@@ -73,6 +84,9 @@ export default function CylinderDetail({ code, onBack }: Props) {
     gasType: "",
     kg: "",
   });
+
+  const assignedTo = assignments[code] ?? "";
+  const inMagazzino = assignedTo === "";
 
   async function handleAddRecovery() {
     if (
@@ -149,6 +163,33 @@ export default function CylinderDetail({ code, onBack }: Props) {
     }
   }
 
+  async function handleAssign() {
+    if (!technicianName.trim()) {
+      toast.error("Inserisci il nome del tecnico");
+      return;
+    }
+    try {
+      await assignCylinder.mutateAsync({
+        code,
+        technician: technicianName.trim(),
+      });
+      toast.success(`Bombola assegnata a ${technicianName.trim()}`);
+      setAssignOpen(false);
+      setTechnicianName("");
+    } catch {
+      toast.error("Errore nell'assegnazione");
+    }
+  }
+
+  async function handleReturn() {
+    try {
+      await returnCylinder.mutateAsync(code);
+      toast.success("Bombola restituita al magazzino");
+    } catch {
+      toast.error("Errore nel reso");
+    }
+  }
+
   const gasPresenti = [...new Set(movements.map((m) => m.gasType))];
   const fillPct =
     cylinder && cylinder.capacityKg > 0
@@ -174,6 +215,21 @@ export default function CylinderDetail({ code, onBack }: Props) {
           <h1 className="font-display font-bold text-lg truncate">{code}</h1>
           <p className="text-xs opacity-70">Dettaglio bombola</p>
         </div>
+        {/* Assignment status in header */}
+        {inMagazzino ? (
+          <Badge
+            variant="outline"
+            className="text-xs font-semibold bg-white/10 text-white border-white/30"
+          >
+            <Warehouse className="h-3 w-3 mr-1" />
+            Magazzino
+          </Badge>
+        ) : (
+          <Badge className="text-xs font-semibold bg-amber-400/20 text-amber-100 border-amber-300/30">
+            <LogIn className="h-3 w-3 mr-1" />
+            {assignedTo}
+          </Badge>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-5 max-w-2xl mx-auto w-full space-y-5">
@@ -253,16 +309,79 @@ export default function CylinderDetail({ code, onBack }: Props) {
           </motion.div>
         ) : null}
 
+        {/* Assignment section */}
+        <div
+          className={`rounded-xl border p-4 flex items-center justify-between gap-3 ${
+            inMagazzino
+              ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800"
+              : "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {inMagazzino ? (
+              <Warehouse className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            ) : (
+              <LogIn className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            )}
+            <div>
+              <p className="text-sm font-semibold">
+                {inMagazzino ? "In magazzino" : `Assegnata a ${assignedTo}`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {inMagazzino
+                  ? "Disponibile per essere presa in carico"
+                  : "Il tecnico ha la bombola in carico"}
+              </p>
+            </div>
+          </div>
+          {inMagazzino ? (
+            <Button
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={() => setAssignOpen(true)}
+            >
+              <LogIn className="h-4 w-4" />
+              Assegna
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 shrink-0"
+              onClick={handleReturn}
+              disabled={returnCylinder.isPending}
+            >
+              {returnCylinder.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+              Reso
+            </Button>
+          )}
+        </div>
+
         {/* Action buttons */}
         <div className="grid grid-cols-1 gap-3">
-          <Button
-            data-ocid="recovery.open_modal_button"
-            className="h-12 text-base gap-2 font-semibold"
-            onClick={() => setRecoveryOpen(true)}
-          >
-            <PlusCircle className="h-5 w-5" />
-            Aggiungi Recupero
-          </Button>
+          <div>
+            <Button
+              data-ocid="recovery.open_modal_button"
+              className="h-12 text-base gap-2 font-semibold w-full"
+              onClick={() => {
+                setForm((p) => ({ ...p, technician: assignedTo }));
+                setRecoveryOpen(true);
+              }}
+              disabled={inMagazzino}
+            >
+              <PlusCircle className="h-5 w-5" />
+              Aggiungi Recupero
+            </Button>
+            {inMagazzino && (
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                Assegna prima la bombola a un tecnico per aggiungere recuperi
+              </p>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <Button
@@ -384,6 +503,37 @@ export default function CylinderDetail({ code, onBack }: Props) {
           )}
         </div>
       </main>
+
+      {/* Modal Assegna */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent data-ocid="assign.dialog" className="max-w-sm mx-4">
+          <DialogHeader>
+            <DialogTitle className="font-display">Assegna Bombola</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-1.5">
+            <Label htmlFor="technician-name">Nome Tecnico</Label>
+            <Input
+              id="technician-name"
+              placeholder="es. Mario Rossi"
+              value={technicianName}
+              onChange={(e) => setTechnicianName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAssign()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAssignOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleAssign} disabled={assignCylinder.isPending}>
+              {assignCylinder.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Assegna
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Aggiungi Recupero */}
       <Dialog open={recoveryOpen} onOpenChange={setRecoveryOpen}>

@@ -21,11 +21,13 @@ export const GasRecovery = IDL.Record({
 });
 
 export const idlService = IDL.Service({
+  'assignCylinder' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'createCylinder' : IDL.Func([IDL.Text, IDL.Float64, IDL.Float64], [], []),
   'createCylinderFull' : IDL.Func([IDL.Text, IDL.Float64, IDL.Float64, IDL.Float64], [], []),
   'deleteAllCylinders' : IDL.Func([], [], []),
   'deleteCylinder' : IDL.Func([IDL.Text], [], []),
   'exportCylinderCsv' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+  'getAllAssignments' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
   'getAllCylinders' : IDL.Func([], [IDL.Vec(Cylinder)], ['query']),
   'getAllCylindersByCurrentGas' : IDL.Func([], [IDL.Vec(Cylinder)], ['query']),
   'getCylinder' : IDL.Func([IDL.Text], [Cylinder], ['query']),
@@ -44,6 +46,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'returnCylinder' : IDL.Func([IDL.Text], [], []),
   'totalDischarge' : IDL.Func([IDL.Text], [], []),
 });
 
@@ -67,11 +70,13 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    'assignCylinder' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'createCylinder' : IDL.Func([IDL.Text, IDL.Float64, IDL.Float64], [], []),
     'createCylinderFull' : IDL.Func([IDL.Text, IDL.Float64, IDL.Float64, IDL.Float64], [], []),
     'deleteAllCylinders' : IDL.Func([], [], []),
     'deleteCylinder' : IDL.Func([IDL.Text], [], []),
     'exportCylinderCsv' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+    'getAllAssignments' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text))], ['query']),
     'getAllCylinders' : IDL.Func([], [IDL.Vec(Cylinder)], ['query']),
     'getAllCylindersByCurrentGas' : IDL.Func(
         [],
@@ -94,6 +99,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'returnCylinder' : IDL.Func([IDL.Text], [], []),
     'totalDischarge' : IDL.Func([IDL.Text], [], []),
   });
 };

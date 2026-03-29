@@ -28,6 +28,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  Warehouse,
   Wind,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -39,6 +40,7 @@ import {
   useBackupRestore,
   useCreateCylinder,
   useDeleteCylinder,
+  useGetAllAssignments,
   useGetAllCylinders,
 } from "../hooks/useQueries";
 
@@ -48,6 +50,7 @@ interface Props {
 
 export default function CylinderList({ onSelectCylinder }: Props) {
   const { data: cylinders = [], isLoading } = useGetAllCylinders();
+  const { data: assignments = {} } = useGetAllAssignments();
   const createCylinder = useCreateCylinder();
   const deleteCylinder = useDeleteCylinder();
   const { actor, isFetching } = useActor();
@@ -60,6 +63,7 @@ export default function CylinderList({ onSelectCylinder }: Props) {
   const [confirmDeleteCode, setConfirmDeleteCode] = useState<string | null>(
     null,
   );
+  const [activeFilter, setActiveFilter] = useState<string>("tutti");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load gas types for all cylinders in parallel
@@ -81,6 +85,19 @@ export default function CylinderList({ onSelectCylinder }: Props) {
   });
 
   const emptyCylinders = cylinders.filter((c) => c.currentGasKg <= 0.01);
+
+  // Technician list from assignments
+  const technicianList = [
+    ...new Set(Object.values(assignments).filter((t) => t !== "")),
+  ].sort();
+
+  // Filtered cylinders
+  const filteredCylinders = cylinders.filter((c) => {
+    if (activeFilter === "tutti") return true;
+    if (activeFilter === "magazzino")
+      return !assignments[c.code] || assignments[c.code] === "";
+    return assignments[c.code] === activeFilter;
+  });
 
   async function handleCreate() {
     if (!form.code.trim() || !form.capacityKg || !form.tareKg) {
@@ -192,14 +209,20 @@ export default function CylinderList({ onSelectCylinder }: Props) {
 
   // Stats
   const totalCount = cylinders.length;
-  const vuoteCount = cylinders.filter((c) => c.currentGasKg <= 0.01).length;
+  const _vuoteCount = cylinders.filter((c) => c.currentGasKg <= 0.01).length;
   const pieneCount = cylinders.filter(
     (c) => c.capacityKg > 0 && c.currentGasKg >= c.capacityKg * 0.98,
   ).length;
-  const inUsoCount = cylinders.filter(
+  const _inUsoCount = cylinders.filter(
     (c) =>
       c.currentGasKg > 0.01 &&
       (c.capacityKg <= 0 || c.currentGasKg < c.capacityKg * 0.98),
+  ).length;
+  const inMagazzinoCount = cylinders.filter(
+    (c) => !assignments[c.code] || assignments[c.code] === "",
+  ).length;
+  const assegnateCount = cylinders.filter(
+    (c) => assignments[c.code] && assignments[c.code] !== "",
   ).length;
 
   const stats = [
@@ -210,10 +233,16 @@ export default function CylinderList({ onSelectCylinder }: Props) {
       bg: "bg-muted/50",
     },
     {
-      label: "Vuote",
-      value: vuoteCount,
-      color: "text-muted-foreground",
-      bg: "bg-muted/30",
+      label: "In Magazzino",
+      value: inMagazzinoCount,
+      color: "text-blue-600 dark:text-blue-400",
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+    },
+    {
+      label: "Assegnate",
+      value: assegnateCount,
+      color: "text-amber-600 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-950/30",
     },
     {
       label: "Piene",
@@ -221,12 +250,16 @@ export default function CylinderList({ onSelectCylinder }: Props) {
       color: "text-green-600 dark:text-green-400",
       bg: "bg-green-50 dark:bg-green-950/30",
     },
-    {
-      label: "In Uso",
-      value: inUsoCount,
-      color: "text-blue-600 dark:text-blue-400",
-      bg: "bg-blue-50 dark:bg-blue-950/30",
-    },
+  ];
+
+  // Filter tabs
+  const filterTabs = [
+    { id: "tutti", label: `Tutti (${totalCount})` },
+    { id: "magazzino", label: `Magazzino (${inMagazzinoCount})` },
+    ...technicianList.map((t) => ({
+      id: t,
+      label: `${t} (${cylinders.filter((c) => assignments[c.code] === t).length})`,
+    })),
   ];
 
   return (
@@ -249,7 +282,7 @@ export default function CylinderList({ onSelectCylinder }: Props) {
               onClick={() => setShowDeleteList(true)}
             >
               <Trash2 className="h-4 w-4" />
-              Cancella Bombola
+              Cancella
             </Button>
           )}
           <Button
@@ -260,7 +293,7 @@ export default function CylinderList({ onSelectCylinder }: Props) {
             onClick={() => setOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Nuova Bombola
+            Nuova
           </Button>
         </div>
       </header>
@@ -364,79 +397,122 @@ export default function CylinderList({ onSelectCylinder }: Props) {
               ))}
             </div>
 
+            {/* Filter tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {filterTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveFilter(tab.id)}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    activeFilter === tab.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                >
+                  {tab.id === "magazzino" && <Warehouse className="h-3 w-3" />}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <AnimatePresence>
-              {cylinders.map((cyl, i) => {
-                const isFull =
-                  cyl.capacityKg > 0 &&
-                  cyl.currentGasKg >= cyl.capacityKg * 0.98;
-                return (
-                  <motion.button
-                    key={cyl.code}
-                    data-ocid={`cylinders.item.${i + 1}`}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => onSelectCylinder(cyl.code)}
-                    className="w-full text-left bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-display font-bold text-lg text-foreground truncate">
-                            {cyl.code}
+              {filteredCylinders.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-8 text-sm text-muted-foreground"
+                >
+                  Nessuna bombola in questo filtro
+                </motion.div>
+              ) : (
+                filteredCylinders.map((cyl, i) => {
+                  const isFull =
+                    cyl.capacityKg > 0 &&
+                    cyl.currentGasKg >= cyl.capacityKg * 0.98;
+                  const assignedTo = assignments[cyl.code] ?? "";
+                  const inMagazzino = assignedTo === "";
+                  return (
+                    <motion.button
+                      key={cyl.code}
+                      data-ocid={`cylinders.item.${i + 1}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => onSelectCylinder(cyl.code)}
+                      className="w-full text-left bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md hover:border-primary/40 active:scale-[0.99] transition-all cursor-pointer"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-display font-bold text-lg text-foreground truncate">
+                              {cyl.code}
+                            </p>
+                            {isFull && (
+                              <Badge className="text-xs font-bold bg-green-500 hover:bg-green-500 text-white shrink-0">
+                                PIENA
+                              </Badge>
+                            )}
+                            {inMagazzino ? (
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-semibold text-blue-600 border-blue-300 shrink-0"
+                              >
+                                Magazzino
+                              </Badge>
+                            ) : (
+                              <Badge className="text-xs font-semibold bg-amber-100 text-amber-800 hover:bg-amber-100 shrink-0">
+                                {assignedTo}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-0.5">
+                            Gas attuale:{" "}
+                            <span className="font-semibold text-foreground">
+                              {cyl.currentGasKg.toFixed(2)} kg
+                            </span>
                           </p>
-                          {isFull && (
-                            <Badge className="text-xs font-bold bg-green-500 hover:bg-green-500 text-white shrink-0">
-                              PIENA
-                            </Badge>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 justify-end">
+                          {(gasMap[cyl.code] ?? []).length > 0 ? (
+                            (gasMap[cyl.code] ?? []).map((gas) => (
+                              <Badge
+                                key={gas}
+                                variant="secondary"
+                                className="text-xs font-semibold"
+                              >
+                                {gas}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                              Nessun gas
+                            </span>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">
-                          Gas attuale:{" "}
-                          <span className="font-semibold text-foreground">
-                            {cyl.currentGasKg.toFixed(2)} kg
-                          </span>
+                      </div>
+                      <div className="mt-3">
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              isFull ? "bg-green-500" : "bg-accent"
+                            }`}
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                (cyl.currentGasKg / cyl.capacityKg) * 100,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Cap. {cyl.capacityKg} kg · Tara {cyl.tareKg} kg
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-1.5 justify-end">
-                        {(gasMap[cyl.code] ?? []).length > 0 ? (
-                          (gasMap[cyl.code] ?? []).map((gas) => (
-                            <Badge
-                              key={gas}
-                              variant="secondary"
-                              className="text-xs font-semibold"
-                            >
-                              {gas}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground italic">
-                            Nessun gas
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${
-                            isFull ? "bg-green-500" : "bg-accent"
-                          }`}
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (cyl.currentGasKg / cyl.capacityKg) * 100,
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Cap. {cyl.capacityKg} kg · Tara {cyl.tareKg} kg
-                      </p>
-                    </div>
-                  </motion.button>
-                );
-              })}
+                    </motion.button>
+                  );
+                })
+              )}
             </AnimatePresence>
           </motion.div>
         )}

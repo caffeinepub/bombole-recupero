@@ -105,21 +105,38 @@ export interface Cylinder {
     currentGasKg: number;
 }
 export interface backendInterface {
+    assignCylinder(code: string, technician: string): Promise<void>;
     createCylinder(code: string, capacityKg: number, tareKg: number): Promise<void>;
+    createCylinderFull(code: string, capacityKg: number, tareKg: number, currentGasKg: number): Promise<void>;
+    deleteAllCylinders(): Promise<void>;
+    deleteCylinder(code: string): Promise<void>;
     exportCylinderCsv(code: string): Promise<string>;
+    getAllAssignments(): Promise<Array<[string, string]>>;
     getAllCylinders(): Promise<Array<Cylinder>>;
     getAllCylindersByCurrentGas(): Promise<Array<Cylinder>>;
     getCylinder(code: string): Promise<Cylinder>;
     getCylinderMovements(code: string): Promise<Array<GasRecovery>>;
     registerRecovery(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number): Promise<void>;
-    totalDischarge(code: string): Promise<void>;
-    deleteCylinder(code: string): Promise<void>;
-    deleteAllCylinders(): Promise<void>;
-    createCylinderFull(code: string, capacityKg: number, tareKg: number, currentGasKg: number): Promise<void>;
     registerRecoveryWithTimestamp(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number, timestamp: bigint): Promise<void>;
+    returnCylinder(code: string): Promise<void>;
+    totalDischarge(code: string): Promise<void>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async assignCylinder(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.assignCylinder(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.assignCylinder(arg0, arg1);
+            return result;
+        }
+    }
     async createCylinder(arg0: string, arg1: number, arg2: number): Promise<void> {
         if (this.processError) {
             try {
@@ -134,6 +151,48 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async createCylinderFull(arg0: string, arg1: number, arg2: number, arg3: number): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.createCylinderFull(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.createCylinderFull(arg0, arg1, arg2, arg3);
+            return result;
+        }
+    }
+    async deleteAllCylinders(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteAllCylinders();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteAllCylinders();
+            return result;
+        }
+    }
+    async deleteCylinder(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteCylinder(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteCylinder(arg0);
+            return result;
+        }
+    }
     async exportCylinderCsv(arg0: string): Promise<string> {
         if (this.processError) {
             try {
@@ -145,6 +204,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.exportCylinderCsv(arg0);
+            return result;
+        }
+    }
+    async getAllAssignments(): Promise<Array<[string, string]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllAssignments();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllAssignments();
             return result;
         }
     }
@@ -218,62 +291,6 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async totalDischarge(arg0: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.totalDischarge(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.totalDischarge(arg0);
-            return result;
-        }
-    }
-    async deleteCylinder(arg0: string): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deleteCylinder(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deleteCylinder(arg0);
-            return result;
-        }
-    }
-    async deleteAllCylinders(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.deleteAllCylinders();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.deleteAllCylinders();
-            return result;
-        }
-    }
-    async createCylinderFull(arg0: string, arg1: number, arg2: number, arg3: number): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.createCylinderFull(arg0, arg1, arg2, arg3);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.createCylinderFull(arg0, arg1, arg2, arg3);
-            return result;
-        }
-    }
     async registerRecoveryWithTimestamp(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: bigint): Promise<void> {
         if (this.processError) {
             try {
@@ -285,6 +302,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.registerRecoveryWithTimestamp(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+            return result;
+        }
+    }
+    async returnCylinder(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.returnCylinder(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.returnCylinder(arg0);
+            return result;
+        }
+    }
+    async totalDischarge(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.totalDischarge(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.totalDischarge(arg0);
             return result;
         }
     }

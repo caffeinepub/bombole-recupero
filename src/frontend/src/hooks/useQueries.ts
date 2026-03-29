@@ -14,6 +14,19 @@ export function useGetAllCylinders() {
   });
 }
 
+export function useGetAllAssignments() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Record<string, string>>({
+    queryKey: ["assignments"],
+    queryFn: async () => {
+      if (!actor) return {};
+      const entries = await actor.getAllAssignments();
+      return Object.fromEntries(entries);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetCylinder(code: string) {
   const { actor, isFetching } = useActor();
   return useQuery<Cylinder>({
@@ -56,6 +69,38 @@ export function useCreateCylinder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cylinders"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
+    },
+  });
+}
+
+export function useAssignCylinder() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      code,
+      technician,
+    }: { code: string; technician: string }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.assignCylinder(code, technician);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
+    },
+  });
+}
+
+export function useReturnCylinder() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      if (!actor) throw new Error("No actor");
+      return actor.returnCylinder(code);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
     },
   });
 }
@@ -206,6 +251,7 @@ export function useDeleteCylinder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cylinders"] });
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
     },
   });
 }

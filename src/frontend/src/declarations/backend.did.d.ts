@@ -22,11 +22,13 @@ export interface GasRecovery {
 }
 export type Time = bigint;
 export interface _SERVICE {
+  'assignCylinder' : ActorMethod<[string, string], undefined>,
   'createCylinder' : ActorMethod<[string, number, number], undefined>,
   'createCylinderFull' : ActorMethod<[string, number, number, number], undefined>,
   'deleteAllCylinders' : ActorMethod<[], undefined>,
   'deleteCylinder' : ActorMethod<[string], undefined>,
   'exportCylinderCsv' : ActorMethod<[string], string>,
+  'getAllAssignments' : ActorMethod<[], Array<[string, string]>>,
   'getAllCylinders' : ActorMethod<[], Array<Cylinder>>,
   'getAllCylindersByCurrentGas' : ActorMethod<[], Array<Cylinder>>,
   'getCylinder' : ActorMethod<[string], Cylinder>,
@@ -39,6 +41,7 @@ export interface _SERVICE {
     [string, string, string, string, string, number, bigint],
     undefined
   >,
+  'returnCylinder' : ActorMethod<[string], undefined>,
   'totalDischarge' : ActorMethod<[string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

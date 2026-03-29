@@ -38,8 +38,13 @@ actor {
   stable var cylindersEntries : [(Text, CylinderRecord)] = [];
   var cylinders = Map.empty<Text, CylinderRecord>();
 
+  // Assignments: cylinderCode -> technicianName (empty string = in magazzino)
+  stable var assignmentsEntries : [(Text, Text)] = [];
+  var assignments = Map.empty<Text, Text>();
+
   system func preupgrade() {
     cylindersEntries := cylinders.entries().toArray();
+    assignmentsEntries := assignments.entries().toArray();
   };
 
   system func postupgrade() {
@@ -47,6 +52,10 @@ actor {
       cylinders.add(k, v);
     };
     cylindersEntries := [];
+    for ((k, v) in assignmentsEntries.vals()) {
+      assignments.add(k, v);
+    };
+    assignmentsEntries := [];
   };
 
   func getCylinderRecordInternal(code : Text) : CylinderRecord {
@@ -81,6 +90,8 @@ actor {
       recoveries = [];
     };
     cylinders.add(code, record);
+    // New cylinder starts in magazzino
+    assignments.add(code, "");
   };
 
   public shared ({ caller }) func registerRecovery(code : Text, location : Text, equipment : Text, technician : Text, gasType : Text, kg : Float) : async () {
@@ -143,11 +154,13 @@ actor {
       Runtime.trap("Cylinder is not empty");
     };
     ignore cylinders.remove(code);
+    ignore assignments.remove(code);
   };
 
   // Backup/Restore functions
   public shared ({ caller }) func deleteAllCylinders() : async () {
     cylinders := Map.empty<Text, CylinderRecord>();
+    assignments := Map.empty<Text, Text>();
   };
 
   public shared ({ caller }) func createCylinderFull(code : Text, capacityKg : Float, tareKg : Float, currentGasKg : Float) : async () {
@@ -162,6 +175,7 @@ actor {
       recoveries = [];
     };
     cylinders.add(code, record);
+    assignments.add(code, "");
   };
 
   public shared ({ caller }) func registerRecoveryWithTimestamp(code : Text, location : Text, equipment : Text, technician : Text, gasType : Text, kg : Float, timestamp : Time.Time) : async () {
@@ -179,5 +193,21 @@ actor {
       recoveries = record.recoveries.concat([newRecovery]);
     };
     cylinders.add(code, newRecord);
+  };
+
+  // Assignment functions
+  public shared ({ caller }) func assignCylinder(code : Text, technician : Text) : async () {
+    ignore cylinders.get(code); // ensure cylinder exists (traps if not)
+    let _ = getCylinderRecordInternal(code);
+    assignments.add(code, technician);
+  };
+
+  public shared ({ caller }) func returnCylinder(code : Text) : async () {
+    let _ = getCylinderRecordInternal(code);
+    assignments.add(code, "");
+  };
+
+  public query ({ caller }) func getAllAssignments() : async [(Text, Text)] {
+    assignments.entries().toArray();
   };
 };
