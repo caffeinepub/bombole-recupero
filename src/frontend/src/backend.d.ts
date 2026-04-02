@@ -35,7 +35,7 @@ export interface backendInterface {
     getCylinder(code: string): Promise<Cylinder>;
     getCylinderMovements(code: string): Promise<Array<GasRecovery>>;
     registerRecovery(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number): Promise<void>;
-    registerRecoveryWithTimestamp(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number, timestamp: bigint): Promise<void>;
+    registerRecoveryWithTimestamp(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number, timestamp: Time): Promise<void>;
     returnCylinder(code: string): Promise<void>;
     totalDischarge(code: string): Promise<void>;
 }

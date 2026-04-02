@@ -36,7 +36,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import {
   useAssignCylinder,
-  useExportCsv,
   useGetAllAssignments,
   useGetCylinder,
   useGetCylinderMovements,
@@ -68,13 +67,13 @@ export default function CylinderDetail({ code, onBack }: Props) {
   const { data: assignments = {} } = useGetAllAssignments();
   const registerRecovery = useRegisterRecovery(code);
   const totalDischarge = useTotalDischarge(code);
-  const exportCsv = useExportCsv(code);
   const assignCylinder = useAssignCylinder();
   const returnCylinder = useReturnCylinder();
 
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [dischargeOpen, setDischargeOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [technicianName, setTechnicianName] = useState("");
   const [reportDownloaded, setReportDownloaded] = useState(false);
   const [form, setForm] = useState({
@@ -146,10 +145,36 @@ export default function CylinderDetail({ code, onBack }: Props) {
     }
   }
 
-  async function handleExportCsv() {
+  function handleExportCsv() {
     try {
-      const csv = await exportCsv.mutateAsync();
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      setExportingCsv(true);
+      const sorted = [...movements].sort((a, b) =>
+        Number(a.timestamp - b.timestamp),
+      );
+      const header = "Codice,Luogo,Apparecchiatura,Tecnico,Tipo Gas,Kg,Data\n";
+      const rows = sorted
+        .map((m) => {
+          const data = formatDate(m.timestamp);
+          // Wrap fields with commas or quotes in double-quotes
+          const escapeCsv = (v: string) =>
+            v.includes(",") || v.includes('"')
+              ? `"${v.replace(/"/g, '""')}"`
+              : v;
+          return [
+            escapeCsv(code),
+            escapeCsv(m.location),
+            escapeCsv(m.equipment),
+            escapeCsv(m.technician),
+            escapeCsv(m.gasType),
+            m.kg.toFixed(2),
+            escapeCsv(data),
+          ].join(",");
+        })
+        .join("\n");
+      const csv = header + rows;
+      const blob = new Blob([`\uFEFF${csv}`], {
+        type: "text/csv;charset=utf-8;",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -160,6 +185,8 @@ export default function CylinderDetail({ code, onBack }: Props) {
       setReportDownloaded(true);
     } catch {
       toast.error("Errore esportazione CSV");
+    } finally {
+      setExportingCsv(false);
     }
   }
 
@@ -409,9 +436,9 @@ export default function CylinderDetail({ code, onBack }: Props) {
               variant="outline"
               className="h-12 text-sm gap-2 font-semibold"
               onClick={handleExportCsv}
-              disabled={exportCsv.isPending}
+              disabled={exportingCsv}
             >
-              {exportCsv.isPending ? (
+              {exportingCsv ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Download className="h-4 w-4" />

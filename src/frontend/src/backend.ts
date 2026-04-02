@@ -117,7 +117,7 @@ export interface backendInterface {
     getCylinder(code: string): Promise<Cylinder>;
     getCylinderMovements(code: string): Promise<Array<GasRecovery>>;
     registerRecovery(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number): Promise<void>;
-    registerRecoveryWithTimestamp(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number, timestamp: bigint): Promise<void>;
+    registerRecoveryWithTimestamp(code: string, location: string, equipment: string, technician: string, gasType: string, kg: number, timestamp: Time): Promise<void>;
     returnCylinder(code: string): Promise<void>;
     totalDischarge(code: string): Promise<void>;
 }
@@ -291,7 +291,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerRecoveryWithTimestamp(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: bigint): Promise<void> {
+    async registerRecoveryWithTimestamp(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: Time): Promise<void> {
         if (this.processError) {
             try {
                 const result = await this.actor.registerRecoveryWithTimestamp(arg0, arg1, arg2, arg3, arg4, arg5, arg6);

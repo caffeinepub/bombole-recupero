@@ -104,6 +104,10 @@ export default function CylinderList({ onSelectCylinder }: Props) {
       toast.error("Compila tutti i campi");
       return;
     }
+    if (!actor) {
+      toast.error("Connessione al backend non pronta, riprova tra un secondo");
+      return;
+    }
     try {
       await createCylinder.mutateAsync({
         code: form.code.trim(),
@@ -113,8 +117,9 @@ export default function CylinderList({ onSelectCylinder }: Props) {
       toast.success("Bombola creata");
       setOpen(false);
       setForm({ code: "", capacityKg: "", tareKg: "" });
-    } catch {
-      toast.error("Errore nella creazione");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Errore nella creazione: ${msg}`);
     }
   }
 
@@ -168,10 +173,14 @@ export default function CylinderList({ onSelectCylinder }: Props) {
     reader.onload = (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
-        if (!Array.isArray(parsed)) throw new Error("Not an array");
+        if (!Array.isArray(parsed)) {
+          toast.error("File non valido: il backup deve essere un array JSON");
+          return;
+        }
         setPendingRestore(parsed);
-      } catch {
-        toast.error("File non valido o errore nel ripristino");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(`File non valido: ${msg}`);
       }
     };
     reader.readAsText(file);
@@ -185,8 +194,9 @@ export default function CylinderList({ onSelectCylinder }: Props) {
         pendingRestore as Parameters<typeof restoreBackup.mutateAsync>[0],
       );
       toast.success("Backup ripristinato");
-    } catch {
-      toast.error("File non valido o errore nel ripristino");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Errore nel ripristino: ${msg}`);
     } finally {
       setPendingRestore(null);
     }
@@ -586,7 +596,7 @@ export default function CylinderList({ onSelectCylinder }: Props) {
             <Button
               data-ocid="cylinder.submit_button"
               onClick={handleCreate}
-              disabled={createCylinder.isPending}
+              disabled={createCylinder.isPending || !actor}
             >
               {createCylinder.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

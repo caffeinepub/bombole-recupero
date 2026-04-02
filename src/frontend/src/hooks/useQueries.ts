@@ -160,6 +160,21 @@ export function useExportCsv(code: string) {
   });
 }
 
+function safeTimestamp(
+  ts: string | number | bigint | null | undefined,
+): bigint {
+  if (ts === null || ts === undefined) return BigInt(0);
+  if (typeof ts === "bigint") return ts;
+  if (typeof ts === "string") {
+    try {
+      return BigInt(ts);
+    } catch {
+      return BigInt(Math.round(Number(ts)));
+    }
+  }
+  return BigInt(Math.round(Number(ts)));
+}
+
 export function useBackupRestore() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
@@ -168,6 +183,8 @@ export function useBackupRestore() {
     mutationFn: async () => {
       if (!actor) throw new Error("No actor");
       const cylinders = await actor.getAllCylinders();
+      const assignmentEntries = await actor.getAllAssignments();
+      const assignmentsMap = Object.fromEntries(assignmentEntries);
       const allMovements = await Promise.all(
         cylinders.map(async (c) => ({
           code: c.code,
@@ -179,6 +196,7 @@ export function useBackupRestore() {
         capacityKg: c.capacityKg,
         tareKg: c.tareKg,
         currentGasKg: c.currentGasKg,
+        assignedTo: assignmentsMap[c.code] ?? "",
         recoveries: (
           allMovements.find((m) => m.code === c.code)?.movements ?? []
         ).map((r) => ({
@@ -201,17 +219,20 @@ export function useBackupRestore() {
         capacityKg: number;
         tareKg: number;
         currentGasKg: number;
+        assignedTo?: string;
         recoveries: Array<{
           location: string;
           equipment: string;
           technician: string;
           gasType: string;
           kg: number;
-          timestamp: string;
+          timestamp: string | number;
         }>;
       }>,
     ) => {
       if (!actor) throw new Error("No actor");
+      if (!Array.isArray(data))
+        throw new Error("Formato backup non valido: deve essere un array");
       await actor.deleteAllCylinders();
       for (const cyl of data) {
         await actor.createCylinderFull(
@@ -220,6 +241,9 @@ export function useBackupRestore() {
           cyl.tareKg,
           cyl.currentGasKg,
         );
+        if (cyl.assignedTo && cyl.assignedTo !== "") {
+          await actor.assignCylinder(cyl.code, cyl.assignedTo);
+        }
         for (const rec of cyl.recoveries) {
           await actor.registerRecoveryWithTimestamp(
             cyl.code,
@@ -228,7 +252,7 @@ export function useBackupRestore() {
             rec.technician,
             rec.gasType,
             rec.kg,
-            BigInt(rec.timestamp),
+            safeTimestamp(rec.timestamp),
           );
         }
       }
